@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CSV Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+        }
+
+        .charts {
+            display: flex;
+            gap: 40px;
+        }
+
+        canvas {
+            width: 400px !important;
+            height: 400px !important;
+        }
+    </style>
+</head>
+<body>
+
+<h2>CSV Pie Chart Dashboard</h2>
+
+<div class="controls">
+    <input type="file" id="csv1" accept=".csv">
+    <input type="file" id="csv2" accept=".csv">
+    <button onclick="renderCharts()">Render Charts</button>
+</div>
+
+<div class="charts">
+    <canvas id="chart1"></canvas>
+    <canvas id="chart2"></canvas>
+</div>
+
+<script>
+    function parseCSV(text) {
+        const lines = text.trim().split("\n");
+        const headers = lines[0].split(",");
+
+        return lines.slice(1).map(line => {
+            const values = line.split(",");
+            return Object.fromEntries(
+                headers.map((h, i) => [h.trim(), values[i].trim()])
+            );
+        });
+    }
+
+    function aggregateByName(data) {
+        const result = {};
+        data.forEach(row => {
+            const name = row.name;
+            const rate = parseFloat(row.rate) || 0;
+            result[name] = (result[name] || 0) + rate;
+        });
+        return result;
+    }
+
+    function createPieChart(ctx, labels, data, colors) {
+        return new Chart(ctx, {
+            type: "pie",
+            data: {
+                labels,
+                datasets: [{
+                    data,
+                    backgroundColor: colors
+                }]
+            }
+        });
+    }
+
+    async function loadCSV(fileInput) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(parseCSV(e.target.result));
+            reader.readAsText(fileInput.files[0]);
+        });
+    }
+
+    async function renderCharts() {
+        const csv1 = document.getElementById("csv1");
+        const csv2 = document.getElementById("csv2");
+
+        if (!csv1.files.length || !csv2.files.length) {
+            alert("Please select both CSV files.");
+            return;
+        }
+
+        const data1 = aggregateByName(await loadCSV(csv1));
+        const data2 = aggregateByName(await loadCSV(csv2));
+
+        createPieChart(
+            document.getElementById("chart1"),
+            Object.keys(data1),
+            Object.values(data1),
+            ["#ff6384", "#36a2eb", "#ffce56", "#4bc0c0"]
+        );
+
+        createPieChart(
+            document.getElementById("chart2"),
+            Object.keys(data2),
+            Object.values(data2),
+            ["#9966ff", "#ff9f40", "#c9cbcf", "#66bb6a"]
+        );
+    }
+</script>
+
+</body>
+</html>
