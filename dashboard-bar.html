@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>CSV Bar Chart Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+
+        .controls {
+            margin-bottom: 20px;
+        }
+
+        .charts {
+            display: flex;
+            gap: 40px;
+        }
+
+        canvas {
+            width: 450px !important;
+            height: 350px !important;
+        }
+    </style>
+</head>
+<body>
+
+<h2>CSV Bar Chart Dashboard</h2>
+
+<div class="controls">
+    <input type="file" id="csv1" accept=".csv">
+    <input type="file" id="csv2" accept=".csv">
+    <button onclick="renderBarChart()">Render Bar Chart</button>
+</div>
+
+<div class="charts">
+    <canvas id="chart1"></canvas>
+</div>
+
+<script>
+    function parseCSV(text) {
+        const lines = text.trim().split("\n");
+        const headers = lines[0].split(",");
+
+        return lines.slice(1).map(line => {
+            const values = line.split(",");
+            return Object.fromEntries(
+                headers.map((h, i) => [h.trim(), values[i].trim()])
+            );
+        });
+    }
+
+    function aggregateByName(data) {
+        const result = {};
+        data.forEach(row => {
+            const rate = parseFloat(row.rate) || 0;
+            result[row.name] = (result[row.name] || 0) + rate;
+        });
+        return result;
+    }
+
+    async function loadCSV(input) {
+        return new Promise(resolve => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(parseCSV(e.target.result));
+            reader.readAsText(input.files[0]);
+        });
+    }
+
+    async function renderBarChart() {
+        const csv1 = document.getElementById("csv1");
+        const csv2 = document.getElementById("csv2");
+
+        if (!csv1.files.length || !csv2.files.length) {
+            alert("Please upload both CSV files.");
+            return;
+        }
+
+        const data1 = aggregateByName(await loadCSV(csv1));
+        const data2 = aggregateByName(await loadCSV(csv2));
+
+        const labels = Array.from(
+            new Set([...Object.keys(data1), ...Object.keys(data2)])
+        );
+
+        new Chart(document.getElementById("chart1"), {
+            type: "bar",
+            data: {
+                labels,
+                datasets: [
+                    {
+                        label: "CSV File 1",
+                        data: labels.map(l => data1[l] || 0),
+                        backgroundColor: "#42a5f5"
+                    },
+                    {
+                        label: "CSV File 2",
+                        data: labels.map(l => data2[l] || 0),
+                        backgroundColor: "#ff7043"
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: { stacked: true },
+                    y: { stacked: true }
+                }
+            }
+        });
+    }
+</script>
+
+</body>
+</html>
